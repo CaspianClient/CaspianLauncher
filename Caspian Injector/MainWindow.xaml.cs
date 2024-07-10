@@ -1,4 +1,5 @@
 ﻿using Caspian;
+using Hardcodet.Wpf.TaskbarNotification;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -6,6 +7,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 using static Caspian.MC;
 
@@ -17,18 +19,32 @@ namespace Caspian_Injector
     public partial class MainWindow : Window
     {
         public static TextBlock _statusTextBlock;
-        WebClient client = new WebClient();
+
+        static string folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Caspian");
 
 
-        public static string dllpath = System.IO.Path.GetTempPath() + "\\dll.dll";
+
+        private SettingsManager settingsManager;
+
+        public static string dllpath = folderPath + "\\dll.dll";
         public MainWindow()
         {
             InitializeComponent();
+            _statusTextBlock = StatusTextBlock;
+
+
+
+            
+
+            if (!Directory.Exists(folderPath))
+                Directory.CreateDirectory(folderPath);
+
+
+            settingsManager = new SettingsManager();
 
             Logger.ClearLogFile();
 
 
-            _statusTextBlock = StatusTextBlock;
 
 
 
@@ -48,10 +64,11 @@ namespace Caspian_Injector
             Logger.WriteLogToFile("\n\n\n\n");
             VersionManager.VersionInit();
 
-            string dll = System.IO.Path.GetTempPath() + "\\helper.dll";
+            string dll = folderPath + "\\helper.dll";
 
             try
             {
+                WebClient client = new WebClient();
                 client.DownloadFile(new Uri(Config.helperURL), dll);
             }
             catch (Exception ex)
@@ -79,6 +96,8 @@ namespace Caspian_Injector
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
+            SettingsWindow settingsWindow = new SettingsWindow(settingsManager);
+            settingsWindow.ShowDialog();
         }
 
 
@@ -90,19 +109,8 @@ namespace Caspian_Injector
             }
         }
 
-        public static void log(String t)
-        {
-            _statusTextBlock.Text = t;
-
-        }
-
         private async void Button_Click(object sender, RoutedEventArgs e)
         {
-
-
-
-            WebClient client = new WebClient();
-
             Minecraft.init();
 
             if (Process.GetProcessesByName("Minecraft.Windows.exe").Length == 0)
@@ -132,26 +140,38 @@ namespace Caspian_Injector
             string mcVersion = MC.Version.GetMinecraftVersion();
             string matchedKey = VersionManager.versions.Keys.FirstOrDefault(key => mcVersion.StartsWith(key));
 
-            if (matchedKey != null && VersionManager.versions.TryGetValue(matchedKey, out string dwurl))
+            settingsManager.LoadSettings();
+
+            if (!settingsManager.Settings.UseCustomDll)
             {
-                Logger.log("Downloading DLL", LogLevel.Info, "Downloader");
+                WebClient client = new WebClient();
 
-                try
+                if (matchedKey != null && VersionManager.versions.TryGetValue(matchedKey, out string dwurl))
                 {
-                    client.DownloadFile(new Uri(dwurl), dllpath);
-                }
-                catch (Exception ex)
-                {
-                    Logger.log(ex.ToString(), LogLevel.Error, "Downloader");
-                    return;
-                }
+                    Logger.log("Downloading DLL", LogLevel.Info, "Downloader");
 
-                Logger.log("Injecting...", LogLevel.Info, "Main");
-                await Minecraft.WaitForModules();
+                    try
+                    {
+                        client.DownloadFile(new Uri(dwurl), dllpath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.log(ex.ToString(), LogLevel.Error, "Downloader");
+                        return;
+                    }
+
+                    Logger.log("Injecting...", LogLevel.Info, "Main");
+                    await Minecraft.WaitForModules(dllpath);
+                }
+                else
+                {
+                    Logger.log($"Can't find dll for {mcVersion}", LogLevel.Info, "Downloader");
+                }
             }
-            else
-            {
-                Logger.log($"Can't find dll for {mcVersion}", LogLevel.Info, "Downloader");
+            else {
+                Logger.log("Injecting...", LogLevel.Info, "Main");
+                await Minecraft.WaitForModules(settingsManager.Settings.DllPath);
+
             }
 
         }

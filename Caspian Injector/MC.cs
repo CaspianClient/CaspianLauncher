@@ -1,10 +1,12 @@
-﻿using System.Diagnostics;
+﻿using Caspian_Injector;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
 using System.Windows.Input;
 
 
@@ -14,6 +16,7 @@ namespace Caspian
     {
         public class Minecraft
         {
+            string folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Caspian");
             private static Process Process;
 
             public static void init()
@@ -26,7 +29,7 @@ namespace Caspian
                 }
             }
 
-            public static async Task WaitForModules()
+            public static async Task WaitForModules(string dllpath)
             {
                 await Task.Run(async () =>
                 {
@@ -44,15 +47,14 @@ namespace Caspian
 
                         if (Process.Modules.Count > 155)
                         {
-                            string i = Insertion.Insert(System.IO.Path.GetTempPath() + "\\dll.dll").ToString();
+                            string i = Insertion.Insert(dllpath).ToString();
+                            Process = null;
                             if (i.Equals("SUCCESS"))
                             {
-                                Process = null;
                                 Logger.log("Enjoy :)", LogLevel.Info, "Injector");
                             }
                             else
                             {
-                                Process = null;
                                 Logger.log(i, LogLevel.Error, "Injector");
                             }
                             
@@ -60,6 +62,7 @@ namespace Caspian
                         }
                         else
                         {
+                            // this is simple antilogspam
                             if (mpc != Process.Modules.Count)
                             {
                                 mpc = Process.Modules.Count;
@@ -105,8 +108,7 @@ namespace Caspian
         {
             public static DllReturns Insert(string path)
             {
-                string tempPath = Environment.GetEnvironmentVariable("TEMP");
-                string dllPath = System.IO.Path.Combine(tempPath, "helper.dll");
+                string dllPath = System.IO.Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Caspian"), "helper.dll");
 
                 DLLImports.LoadLibrary(dllPath);
                 return (DllReturns)DLLImports.AddTheDLLToTheGame(path);

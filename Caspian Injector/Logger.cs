@@ -15,7 +15,8 @@ namespace Caspian
     }
     public class Logger
     {
-        private static readonly string logFilePath = $"{System.IO.Path.GetTempPath()}\\log.txt";
+        static string folderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Caspian");
+        private static readonly string logFilePath = $"{folderPath}\\log.txt";
 
         public static void log(String message, LogLevel id, String worker)
         {
